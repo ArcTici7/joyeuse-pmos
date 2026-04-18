@@ -1,32 +1,39 @@
 name: Build pmOS Boot Image
-on: [workflow_dispatch] # Allows you to click a button to start it
+on: [workflow_dispatch]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install pmbootstrap
+      - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-pip openssl
-          pip3 install pmbootstrap
+          sudo apt-get install -y python3-pip python3-setuptools openssl git
+          # Force install pmbootstrap on Ubuntu 24.04 runner
+          pip3 install pmbootstrap --break-system-packages
 
-      - name: Init pmbootstrap
+      - name: Initialize pmbootstrap
         run: |
-          # We use 'edge' to get the 6.x mainline kernel
-          # Device 'xiaomi-miatoll' covers joyeuse
-          pmbootstrap init --arch aarch64 --device xiaomi-miatoll --mirror https://mirror.postmarketos.org/postmarketos/ --version edge --ui none
+          # --non-interactive is key for CI/CD
+          pmbootstrap init \
+            --arch aarch64 \
+            --device xiaomi-miatoll \
+            --mirror https://mirror.postmarketos.org/postmarketos/ \
+            --version edge \
+            --ui none \
+            --work /home/runner/pmbootstrap_work \
+            --non-interactive
 
-      - name: Generate Images
+      - name: Build Installation Files
         run: |
-          # We build the installation files. 
-          # This pulls the pre-built mainline kernel automatically.
-          pmbootstrap install --password 1234 --serialnumber 12345678
+          # This pulls the pre-built mainline kernel and prepares the rootfs
+          # Password is set to '1234' for SSH later
+          pmbootstrap install --password 1234 --serialnumber 12345678 --work /home/runner/pmbootstrap_work
 
-      - name: Export Files
+      - name: Export Boot Image
         run: |
           mkdir output
-          pmbootstrap export output
+          pmbootstrap export output --work /home/runner/pmbootstrap_work
 
       - name: Upload boot.img
         uses: actions/upload-artifact@v4
