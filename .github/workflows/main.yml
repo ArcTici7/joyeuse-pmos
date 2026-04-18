@@ -9,12 +9,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y python3-pip python3-setuptools openssl git
-          # Force install pmbootstrap on Ubuntu 24.04 runner
-          pip3 install pmbootstrap --break-system-packages
+          # Install directly from GitLab to avoid the yanked PyPI versions
+          pip3 install git+https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git --break-system-packages
 
       - name: Initialize pmbootstrap
         run: |
-          # --non-interactive is key for CI/CD
           pmbootstrap init \
             --arch aarch64 \
             --device xiaomi-miatoll \
@@ -26,14 +25,15 @@ jobs:
 
       - name: Build Installation Files
         run: |
-          # This pulls the pre-built mainline kernel and prepares the rootfs
-          # Password is set to '1234' for SSH later
+          # This builds the kernel and rootfs. 
+          # Password is set to '1234' for SSH.
           pmbootstrap install --password 1234 --serialnumber 12345678 --work /home/runner/pmbootstrap_work
 
       - name: Export Boot Image
         run: |
           mkdir output
-          pmbootstrap export output --work /home/runner/pmbootstrap_work
+          # Exports the boot.img and other files to the output folder
+          pmbootstrap export ./output --work /home/runner/pmbootstrap_work
 
       - name: Upload boot.img
         uses: actions/upload-artifact@v4
